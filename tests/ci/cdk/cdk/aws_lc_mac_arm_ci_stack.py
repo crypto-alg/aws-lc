@@ -7,15 +7,13 @@ import boto3
 from botocore.exceptions import ClientError
 from aws_cdk import core, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam, aws_s3 as s3, aws_logs as logs
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
-from util.iam_policies import code_build_batch_policy_in_json, s3_read_write_policy_in_json, \
-    ec2_bm_framework_policies_in_json, ssm_bm_framework_policies_in_json, s3_bm_framework_policies_in_json, \
-    ecr_power_user_policy_in_json
+from util.iam_policies import code_build_batch_policy_in_json, ec2_policies_in_json, ssm_policies_in_json
 from util.build_spec_loader import BuildSpecLoader
 
 # detailed documentation can be found here: https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ec2-readme.html
 
 class AwsLcMacArmCIStack(core.Stack):
-    """Define a stack used to create a CodeBuild instance on which to execute the AWS-LC benchmarking framework"""
+    """Define a stack used to create a CodeBuild instance on which to execute the AWS-LC m1 ci ec2 instance"""
 
     def __init__(self,
                  scope: core.Construct,
@@ -42,11 +40,11 @@ class AwsLcMacArmCIStack(core.Stack):
 
         # Define a IAM role for this stack.
         code_build_batch_policy = iam.PolicyDocument.from_json(code_build_batch_policy_in_json([id]))
-        ec2_bm_framework_policy = iam.PolicyDocument.from_json(ec2_bm_framework_policies_in_json())
-        ssm_bm_framework_policy = iam.PolicyDocument.from_json(ssm_bm_framework_policies_in_json())
+        ec2_policy = iam.PolicyDocument.from_json(ec2_policies_in_json())
+        ssm_policy = iam.PolicyDocument.from_json(ssm_policies_in_json())
         codebuild_inline_policies = {"code_build_batch_policy": code_build_batch_policy,
-                                     "ec2_bm_framework_policy": ec2_bm_framework_policy,
-                                     "ssm_bm_framework_policy": ssm_bm_framework_policy}
+                                     "ec2_policy": ec2_policy,
+                                     "ssm_policy": ssm_policy}
         codebuild_role = iam.Role(scope=self,
                                   id="{}-codebuild-role".format(id),
                                   assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
@@ -95,6 +93,25 @@ class AwsLcMacArmCIStack(core.Stack):
                                 auto_placement="off",
                                 instance_type="mac2.metal")
         core.Tags.of(cfn_host).add("Name", "{}-dedicated-host".format(id))
+
+    #       instance_id="$(aws ec2 run-instances --image-id "${ami_id}" --count 1 \
+    # --instance-type mac2.metal --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
+    # --tag-specifications 'ResourceType="instance",Tags=[{Key="Name",Value="aws-lc-ci-macos-arm-ec2-instance"},]' \
+    # --iam-instance-profile Name=aws-lc-ci-macos-arm-ec2-profile \
+    # --placement "AvailabilityZone=us-west-2a,HostId=${host_id},Tenancy=host"\
+    # --query Instances[*].InstanceId --output text)"
+
+        # AMI is for M1 MacOS Monterey.
+        # ami_id="ami-084c6ab9d03ad4d46"
+        # cfn_instance = ec2.CfnInstance(self, "{}-ec2-instance".format(id),
+        #                 availability_zone="us-west-2a",
+        #                 tenancy="host",
+        #                 host_id="{}-dedicated-host".format(id),
+        #                 iam_instance_profile="{}-ec2-profile".format(id),
+        #                 image_id=ami_id,
+        #                 instance_type="mac2.metal",
+        #                 security_group_ids="{}-ec2-sg".format(id),
+        #                 subnet_id="{}-ec2-vpc".format(id))
 
         # Define logs for SSM.
         logs.LogGroup(self, "{}-cw-logs".format(id), log_group_name=CLOUDWATCH_LOGS)

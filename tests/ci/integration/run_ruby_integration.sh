@@ -77,7 +77,7 @@ function ruby_patch() {
     fi
 
     for patch_dir in "${patch_dirs[@]}"; do
-        for patchfile in $(find -L ${patch_dir} -type f -name '*.patch'); do
+        for patchfile in $(find -L ${patch_dir} -type f -name '*.patch' ! -empty); do
           echo "Apply patch ${patchfile}..."
           patch --strip 1 -F 3 --quiet -d ${src_dir} --input ${patchfile}
         done

@@ -534,6 +534,12 @@ jobs:
             compiler: gcc-13
             ipv6: true
             run: ./tests/ci/integration/run_ruby_integration.sh master
+          - name: trousers
+            arch: x86_64
+            size: small
+            image: ubuntu:22.04
+            compiler: gcc-12
+            run: ./tests/ci/integration/run_trousers_integration.sh
     steps:
       - uses: actions/checkout@v7
       - name: Login to Amazon ECR
